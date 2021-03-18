@@ -32,10 +32,10 @@ echo "This script will install and configure necessary components for RedELK on 
 echo ""
 echo ""
 
-if [[ $EUID -ne 0 ]]; then
-  echo "[X] Not running as root. Exiting"
-  exit 1
-fi
+#if [[ $EUID -ne 0 ]]; then
+#  echo "[X] Not running as root. Exiting"
+#  exit 1
+#fi
 
 if [ ${#} -ne 0 ] && [ ${1} = "limited" ]; then
     echo "Parameter 'limited' found. Going for the limited RedELK experience." | tee -a $LOGFILE
@@ -118,11 +118,11 @@ preinstallcheck() {
     SHOULDEXIT=false
 
     # Checking if OS is Debian / APT based
-    if [ ! -f  /etc/debian_version ]; then
-        echo "[X] This system does not seem to be Debian/APT-based. RedELK installer only supports Debian/APT based systems."  | tee -a $LOGFILE
-        echoerror "System is not Debian/APT based. Not supported. Exiting."
-        exit 1
-    fi
+    #if [ ! -f  /etc/debian_version ]; then
+    #    echo "[X] This system does not seem to be Debian/APT-based. RedELK installer only supports Debian/APT based systems."  | tee -a $LOGFILE
+    #    echoerror "System is not Debian/APT based. Not supported. Exiting."
+    #    exit 1
+    #fi
 
     # Check if curl is installed
     if [ ! -x "$(command -v curl)" ]; then
@@ -145,7 +145,8 @@ preinstallcheck() {
     fi
 
     # checking system memory and setting variables
-    AVAILABLE_MEMORY=$(awk '/MemAvailable/{printf "%.f", $2/1024}' /proc/meminfo)
+    #AVAILABLE_MEMORY=$(awk '/MemAvailable/{printf "%.f", $2/1024}' /proc/meminfo)
+    AVAILABLE_MEMORY=8000
     ERROR=$?
     echo "[*] Memory found available for RedELK: $AVAILABLE_MEMORY MB."
     if [ $ERROR -ne 0 ]; then
@@ -216,10 +217,10 @@ preinstallcheck() {
 preinstallcheck
 
 # DEV specific things
-if [ $DEV == "yes" ]; then
-    chown -R 1000 ./docker/redelk-base/redelkinstalldata
-    chown -R 1000 ./docker/redelk-logstash/redelkinstalldata
-fi
+#if [ $DEV == "yes" ]; then
+    #sudo chown -R 1000 ./docker/redelk-base/redelkinstalldata
+    #sudo chown -R 1000 ./docker/redelk-logstash/redelkinstalldata
+#fi
 
 if [ ! -f ${DOCKERENVFILE} ]; then
     echo "[*] .env file doesn't exist yet, copying from .env.tmpl"  | tee -a $LOGFILE
@@ -242,7 +243,7 @@ if [ $ERROR -ne 0 ]; then
     exit 1
 fi
 
-CREDS_kibana_system=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+CREDS_kibana_system=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z-0-9 | head -c32)
 echo "[*] Setting kibana_system ES password" | tee -a $LOGFILE
 sed -E -i.bak "s/\{\{CREDS_kibana_system\}\}/${CREDS_kibana_system}/g" ${DOCKERENVFILE} >> $LOGFILE 2>&1
 ERROR=$?
@@ -251,7 +252,7 @@ if [ $ERROR -ne 0 ]; then
     exit 1
 fi
 
-CREDS_logstash_system=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+CREDS_logstash_system=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z-0-9 | head -c32)
 echo "[*] Setting logstash_system ES password" | tee -a $LOGFILE
 sed -E -i.bak "s/\{\{CREDS_logstash_system\}\}/${CREDS_logstash_system}/g" ${DOCKERENVFILE} >> $LOGFILE 2>&1
 ERROR=$?
@@ -259,7 +260,7 @@ if [ $ERROR -ne 0 ]; then
     echoerror "[X] Could not set logstash_system ES password (Error Code: $ERROR)."
 fi
 
-CREDS_redelk_ingest=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+CREDS_redelk_ingest=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z-0-9 | head -c32)
 echo "[*] Setting redelk_ingest ES password" | tee -a $LOGFILE
 sed -E -i.bak "s/\{\{CREDS_redelk_ingest\}\}/${CREDS_redelk_ingest}/g" ${DOCKERENVFILE} >> $LOGFILE 2>&1
 ERROR=$?
@@ -269,7 +270,7 @@ fi
 
 # check if we need to create a redelk user account
 if (grep "{{CREDS_redelk}}" $DOCKERENVFILE > /dev/null); then
-    CREDS_redelk=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+    CREDS_redelk=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z-0-9 | head -c32)
     
     echo "[*] Setting redelk password in elasticsearch" | tee -a $LOGFILE
     sed -E -i.bak "s/\{\{CREDS_redelk\}\}/${CREDS_redelk}/g" ${DOCKERENVFILE} >> $LOGFILE 2>&1
@@ -278,12 +279,12 @@ if (grep "{{CREDS_redelk}}" $DOCKERENVFILE > /dev/null); then
         echoerror "[X] Could not set redelk ES password (Error Code: $ERROR)."
     fi
     
-    echo "[*] Installing apache2-utils for setting htaccess" | tee -a $LOGFILE
-    apt -y install apache2-utils >> $LOGFILE 2>&1
-    ERROR=$?
-    if [ $ERROR -ne 0 ]; then
-        echoerror "[X] Error installing apache2-utils package (Error Code: $ERROR)."
-    fi
+    #echo "[*] Installing apache2-utils for setting htaccess" | tee -a $LOGFILE
+    #apt -y install apache2-utils >> $LOGFILE 2>&1
+    #ERROR=$?
+    #if [ $ERROR -ne 0 ]; then
+        #echoerror "[X] Error installing apache2-utils package (Error Code: $ERROR)."
+    #fi
     
     echo "[*] Setting redelk password in htaccess" | tee -a $LOGFILE
     htpasswd -b -m mounts/nginx-config/htpasswd.users redelk ${CREDS_redelk} >> $LOGFILE 2>&1
@@ -298,7 +299,7 @@ fi
     
 # check if we need to create a elastic user password
 if (grep "{{ELASTIC_PASSWORD}}" $DOCKERENVFILE > /dev/null); then
-    ELASTIC_PASSWORD=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+    ELASTIC_PASSWORD=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z-0-9 | head -c32)
 
     echo "[*] Setting elastic ES password in Docker template" | tee -a $LOGFILE
     sed -E -i.bak "s/\{\{ELASTIC_PASSWORD\}\}/${ELASTIC_PASSWORD}/g" ${DOCKERENVFILE} >> $LOGFILE 2>&1
@@ -319,7 +320,7 @@ else
    ELASTIC_PASSWORD=$(grep -E ^ELASTIC_PASSWORD= .env|awk -F\= '{print $2}')
 fi
 
-KBN_XPACK_ENCRYPTEDSAVEDOBJECTS=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+KBN_XPACK_ENCRYPTEDSAVEDOBJECTS=$(< /dev/urandom LC_CTYPE=C tr -dc _A-Z-a-z-0-9 | head -c32)
 echo "[*] Setting Kibana encryption key" | tee -a $LOGFILE
 sed -E -i.bak "s/\{\{KBN_XPACK_ENCRYPTEDSAVEDOBJECTS\}\}/${KBN_XPACK_ENCRYPTEDSAVEDOBJECTS}/g" ${DOCKERENVFILE} >> $LOGFILE 2>&1
 ERROR=$?
@@ -343,26 +344,26 @@ if [ ${WHATTOINSTALL} = "full" ]; then
     fi
 fi
 
-echo "[*] Setting permissions on logstash configs" | tee -a $LOGFILE
-chown -R 1000 ./mounts/logstash-config/* >> $LOGFILE 2>&1
-ERROR=$?
-if [ $ERROR -ne 0 ]; then
-    echoerror "[X] Could not set permissions on logsatsh configs (Error Code: $ERROR)."
-fi
+#echo "[*] Setting permissions on logstash configs" | tee -a $LOGFILE
+#sudo chown -R 1000 ./mounts/logstash-config/* >> $LOGFILE 2>&1
+#ERROR=$?
+#if [ $ERROR -ne 0 ]; then
+    #echoerror "[X] Could not set permissions on logsatsh configs (Error Code: $ERROR)."
+#fi
 
-echo "[*] Setting permissions on redelk logs" | tee -a $LOGFILE
-chown -R 1000 ./mounts/redelk-logs && chmod 664 ./mounts/redelk-logs/* >> $LOGFILE 2>&1
-ERROR=$?
-if [ $ERROR -ne 0 ]; then
-    echoerror "[X] Could not set permissions on redelk logs (Error Code: $ERROR)."
-fi
+#echo "[*] Setting permissions on redelk logs" | tee -a $LOGFILE
+#sudo chown -R 1000 ./mounts/redelk-logs && sudo chmod 664 ./mounts/redelk-logs/* >> $LOGFILE 2>&1
+#ERROR=$?
+#if [ $ERROR -ne 0 ]; then
+    #echoerror "[X] Could not set permissions on redelk logs (Error Code: $ERROR)."
+#fi
 
-echo "[*] Setting permissions on Jupyter notebook work dir" | tee -a $LOGFILE
-chown -R 1000 ./mounts/jupyter-workbooks >> $LOGFILE 2>&1
-ERROR=$?
-if [ $ERROR -ne 0 ]; then
-    echoerror "[X] Could not set permissions on Jupyter notebook work dir (Error Code: $ERROR)."
-fi
+#echo "[*] Setting permissions on Jupyter notebook work dir" | tee -a $LOGFILE
+#sudo chown -R 1000 ./mounts/jupyter-workbooks >> $LOGFILE 2>&1
+#ERROR=$?
+#if [ $ERROR -ne 0 ]; then
+    #echoerror "[X] Could not set permissions on Jupyter notebook work dir (Error Code: $ERROR)."
+#fi
 
 echo "[*] Building RedELK from $DOCKERCONFFILE file" | tee -a $LOGFILE
 docker-compose -f $DOCKERCONFFILE up --build -d # >>$LOGFILE 2>&1
